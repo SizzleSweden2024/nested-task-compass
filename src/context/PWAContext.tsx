@@ -1,4 +1,3 @@
-
 import React, {
   createContext,
   useContext,
@@ -63,7 +62,8 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
   const [newVersionAvailable, setNewVersionAvailable] = useState<boolean>(false);
 
   useEffect(() => {
-    const updateSWFn = registerSW({
+    // Register service worker
+    registerSW({
       onOfflineReady() {
         setOfflineReady(true);
       },
@@ -71,13 +71,11 @@ export const PWAProvider: React.FC<{ children: ReactNode }> = ({ children }) => 
         setNeedRefresh(true);
         setNewVersionAvailable(true);
       },
-      onUpdate(swUpdate) {
-        setUpdateSW(() => swUpdate);
+      onUpdate(updateFunction) {
+        setUpdateSW(() => updateFunction);
       },
-    });
-
-    updateSWFn.then(swUpdate => {
-      setUpdateSW(() => swUpdate);
+    }).then(updateFunction => {
+      setUpdateSW(() => updateFunction);
     });
     
     // Check for PWA status

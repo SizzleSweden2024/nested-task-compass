@@ -1,4 +1,6 @@
-
+/**
+ * Service Worker registration and update handling
+ */
 interface RegisterSWOptions {
   onOfflineReady?: () => void;
   onNeedRefresh?: () => void;
@@ -7,29 +9,71 @@ interface RegisterSWOptions {
 
 export function registerSW(options: RegisterSWOptions = {}): Promise<() => Promise<boolean>> {
   const { onOfflineReady, onNeedRefresh, onUpdate } = options;
-
-  // Simple implementation that mimics the functionality of virtual:pwa-register
-  // In a real implementation, this would register a service worker
   
-  // Mock the update function
-  const updateFunction = async (): Promise<boolean> => {
-    try {
-      // In a real implementation, this would update the service worker
-      console.log("Service worker updated");
-      window.location.reload();
-      return true;
-    } catch (error) {
-      console.error("Failed to update service worker", error);
-      return false;
+  // Create a function to update the service worker
+  const updateSW = async (): Promise<boolean> => {
+    if ('serviceWorker' in navigator) {
+      const registration = await navigator.serviceWorker.ready;
+      if (registration.waiting) {
+        // Send a message to the waiting service worker to skip waiting
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+        return true;
+      }
     }
+    return false;
   };
 
-  // Simulate the service worker registration
-  setTimeout(() => {
-    if (onOfflineReady) onOfflineReady();
-    if (onNeedRefresh) onNeedRefresh();
-    if (onUpdate) onUpdate(updateFunction);
-  }, 1000);
+  // Register the service worker
+  if ('serviceWorker' in navigator) {
+    // Wait for the page to load
+    window.addEventListener('load', async () => {
+      try {
+        // Register the service worker
+        const registration = await navigator.serviceWorker.register('/service-worker.js', {
+          scope: '/'
+        });
+        
+        // Handle service worker updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing;
+          if (!newWorker) return;
+          
+          newWorker.addEventListener('statechange', () => {
+            // When the service worker is installed and waiting
+            if (newWorker.state === 'installed') {
+              // If there's an existing controller, it means this is an update
+              if (navigator.serviceWorker.controller) {
+                if (onNeedRefresh) onNeedRefresh();
+                if (onUpdate) onUpdate(updateSW);
+              } else {
+                // First time installation
+                if (onOfflineReady) onOfflineReady();
+              }
+            }
+          });
+        });
+        
+        // Check if there's already a waiting service worker
+        if (registration.waiting && navigator.serviceWorker.controller) {
+          if (onNeedRefresh) onNeedRefresh();
+          if (onUpdate) onUpdate(updateSW);
+        }
+        
+        // Handle controller change (after skipWaiting)
+        let refreshing = false;
+        navigator.serviceWorker.addEventListener('controllerchange', () => {
+          if (!refreshing) {
+            refreshing = true;
+            window.location.reload();
+          }
+        });
+        
+        console.log('Service worker registered successfully');
+      } catch (error) {
+        console.error('Service worker registration failed:', error);
+      }
+    });
+  }
 
-  return Promise.resolve(updateFunction);
+  return Promise.resolve(updateSW);
 }

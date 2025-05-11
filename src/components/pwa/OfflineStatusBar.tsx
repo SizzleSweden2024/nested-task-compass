@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { usePWAContext } from '@/context/PWAContext';
 import { WifiOff, CloudSun, Cloud, RefreshCcw, Wifi } from 'lucide-react';
@@ -46,6 +45,7 @@ export const OfflineStatusBar = () => {
       new Promise<void>(async (resolve, reject) => {
         try {
           await updateServiceWorker();
+          // The page will reload automatically after the service worker is updated
           resolve();
         } catch (error) {
           reject(error);
