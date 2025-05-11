@@ -28,9 +28,14 @@ export function registerSW(options: RegisterSWOptions = {}): Promise<() => Promi
     // Wait for the page to load
     window.addEventListener('load', async () => {
       try {
-        // Register the service worker
+        // Unregister any existing service workers first
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map(registration => registration.unregister()));
+        
+        // Register the new service worker
         const registration = await navigator.serviceWorker.register('/service-worker.js', {
-          scope: '/'
+          scope: '/',
+          type: 'module'
         });
         
         // Handle service worker updates
