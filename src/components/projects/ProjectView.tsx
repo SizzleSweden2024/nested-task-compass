@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { useTaskContext } from '@/context/TaskContext';
 import ProjectItem from './ProjectItem';
@@ -86,7 +85,11 @@ const ProjectView: React.FC = () => {
           <p className="text-muted-foreground mb-4">No projects yet. Create your first project to get started!</p>
         </div>}
 
-      <AddTaskDialog open={isAddTaskOpen} onOpenChange={setIsAddTaskOpen} projectId={selectedProjectId || ''} />
+      <AddTaskDialog 
+        open={isAddTaskOpen} 
+        onOpenChange={setIsAddTaskOpen} 
+        projectId={selectedProjectId || ''} 
+      />
     </div>;
 };
 
