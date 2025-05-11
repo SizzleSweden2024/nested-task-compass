@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Cache } from '@/utils/cache-utils';
@@ -69,7 +68,16 @@ export const processSupabaseData = <T extends Record<string, any>>(data: T): T =
  * Since we're removing authentication, we'll return a default user ID
  */
 export const getCurrentUserId = async (): Promise<string> => {
-  return 'default-user';
+  // Get the user ID from localStorage or generate a new one
+  const USER_ID_KEY = 'khonja_user_id';
+  let userId = localStorage.getItem(USER_ID_KEY);
+  
+  if (!userId) {
+    userId = crypto.randomUUID();
+    localStorage.setItem(USER_ID_KEY, userId);
+  }
+  
+  return userId;
 };
 
 // Create caches for different data types
