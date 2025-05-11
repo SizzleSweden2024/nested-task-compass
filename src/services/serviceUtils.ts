@@ -1,6 +1,8 @@
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Cache } from '@/utils/cache-utils';
+import { v4 as uuidv4 } from 'uuid';
+import { isValidUUID } from '@/context/TaskHelpers';
 
 /**
  * Utility function to handle Supabase errors
@@ -64,17 +66,18 @@ export const processSupabaseData = <T extends Record<string, any>>(data: T): T =
 };
 
 /**
- * Get the current authenticated user's ID
- * Since we're removing authentication, we'll return a default user ID
+ * Get the current user ID (a valid UUID)
  */
 export const getCurrentUserId = async (): Promise<string> => {
   // Get the user ID from localStorage or generate a new one
   const USER_ID_KEY = 'khonja_user_id';
   let userId = localStorage.getItem(USER_ID_KEY);
   
-  if (!userId) {
-    userId = crypto.randomUUID();
+  // Validate that the user ID is a valid UUID
+  if (!userId || !isValidUUID(userId)) {
+    userId = uuidv4();
     localStorage.setItem(USER_ID_KEY, userId);
+    console.log('Generated new user ID:', userId);
   }
   
   return userId;

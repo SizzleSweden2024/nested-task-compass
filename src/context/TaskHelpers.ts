@@ -1,7 +1,7 @@
-
 import { Task } from './TaskTypes';
+import { v4 as uuidv4 } from 'uuid';
 
-export const generateId = () => Math.random().toString(36).substring(2, 11);
+export const generateId = () => uuidv4();
 
 export const findTaskById = (taskId: string, taskList: Task[]): Task | undefined => {
   for (const task of taskList) {
@@ -41,3 +41,43 @@ export const deleteTaskFromHierarchy = (
     }
     return true;
   });
+
+// Ensure a string is a valid UUID
+export const isValidUUID = (id: string): boolean => {
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(id);
+};
+
+// Convert legacy task IDs to UUIDs if needed
+export const ensureUUID = (id: string): string => {
+  if (isValidUUID(id)) return id;
+  
+  // If it's a legacy ID like "task-1-2", generate a new UUID
+  // and store the mapping in localStorage for consistency
+  const mappingKey = 'khonja_id_mapping';
+  let mapping = {};
+  
+  try {
+    const storedMapping = localStorage.getItem(mappingKey);
+    if (storedMapping) {
+      mapping = JSON.parse(storedMapping);
+    }
+  } catch (e) {
+    console.error('Error parsing ID mapping:', e);
+  }
+  
+  if (mapping[id]) {
+    return mapping[id];
+  }
+  
+  const newId = uuidv4();
+  mapping[id] = newId;
+  
+  try {
+    localStorage.setItem(mappingKey, JSON.stringify(mapping));
+  } catch (e) {
+    console.error('Error storing ID mapping:', e);
+  }
+  
+  return newId;
+};

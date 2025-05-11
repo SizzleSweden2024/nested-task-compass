@@ -7,8 +7,9 @@ import * as timeTrackingService from '@/services/timeTrackingService';
 import * as timeBlockService from '@/services/timeBlockService';
 import { withTaskContext } from '../hocs/withTaskContext';
 import { toast } from "@/hooks/use-toast";
-import { findTaskById, updateTaskInHierarchy, getRootTasks } from '../TaskHelpers';
+import { findTaskById, updateTaskInHierarchy, getRootTasks, isValidUUID } from '../TaskHelpers';
 import type { TaskContextType, TimeTrackingContextType } from '../types/TaskContextTypes';
+import { v4 as uuidv4 } from 'uuid';
 
 const TimeTrackingContext = createContext<TimeTrackingContextType | undefined>(undefined);
 
@@ -27,8 +28,8 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const getUserId = () => {
     const USER_ID_KEY = 'khonja_user_id';
     let userId = localStorage.getItem(USER_ID_KEY);
-    if (!userId) {
-      userId = crypto.randomUUID();
+    if (!userId || !isValidUUID(userId)) {
+      userId = uuidv4();
       localStorage.setItem(USER_ID_KEY, userId);
     }
     return userId;
@@ -170,8 +171,27 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       // Find the task to ensure it exists and get its UUID
       const task = findTaskById(taskId, getRootTasks(tasks));
       if (!task) {
-        throw new Error(`Task with ID ${taskId} not found`);
+        console.error(`Task with ID ${taskId} not found`);
+        toast({
+          title: "Error",
+          description: "Task not found. Please try again.",
+          variant: "destructive",
+        });
+        return;
       }
+      
+      // Ensure the task ID is a valid UUID
+      if (!isValidUUID(task.id)) {
+        console.error(`Task ID ${task.id} is not a valid UUID`);
+        toast({
+          title: "Error",
+          description: "Invalid task ID format. Please refresh the page.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      console.log(`Starting time tracking for task: ${task.id} (${task.title})`);
       
       const { data, error } = await supabase
         .from('time_trackings')
@@ -185,7 +205,10 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
         .select()
         .single();
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase error:', error);
+        throw error;
+      }
       
       const newTracking: TimeTracking = {
         id: data.id,
@@ -198,7 +221,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       setActiveTimeTracking(newTracking);
     } catch (error) {
       console.error('Error starting time tracking:', error);
-      throw error;
+      toast({
+        title: "Error",
+        description: "Failed to start time tracking. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -238,7 +265,24 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       // Find the task to ensure it exists and get its UUID
       const task = findTaskById(timeTracking.taskId, getRootTasks(tasks));
       if (!task) {
-        throw new Error(`Task with ID ${timeTracking.taskId} not found`);
+        console.error(`Task with ID ${timeTracking.taskId} not found`);
+        toast({
+          title: "Error",
+          description: "Task not found. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Ensure the task ID is a valid UUID
+      if (!isValidUUID(task.id)) {
+        console.error(`Task ID ${task.id} is not a valid UUID`);
+        toast({
+          title: "Error",
+          description: "Invalid task ID format. Please refresh the page.",
+          variant: "destructive",
+        });
+        return;
       }
       
       const { data, error } = await supabase
@@ -271,6 +315,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       updateTaskTimeTracked(task.id, timeTracking.duration);
     } catch (error) {
       console.error('Error adding time tracking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add time tracking. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -291,6 +340,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       timeTrackingActions.updateTimeTracking(timeTracking);
     } catch (error) {
       console.error('Error updating time tracking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update time tracking. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -306,6 +360,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       timeTrackingActions.deleteTimeTracking(timeTrackingId);
     } catch (error) {
       console.error('Error deleting time tracking:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete time tracking. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -314,7 +373,24 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       // Find the task to ensure it exists and get its UUID
       const task = findTaskById(timeBlock.taskId, getRootTasks(tasks));
       if (!task) {
-        throw new Error(`Task with ID ${timeBlock.taskId} not found`);
+        console.error(`Task with ID ${timeBlock.taskId} not found`);
+        toast({
+          title: "Error",
+          description: "Task not found. Please try again.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
+      // Ensure the task ID is a valid UUID
+      if (!isValidUUID(task.id)) {
+        console.error(`Task ID ${task.id} is not a valid UUID`);
+        toast({
+          title: "Error",
+          description: "Invalid task ID format. Please refresh the page.",
+          variant: "destructive",
+        });
+        return;
       }
       
       const { data, error } = await supabase
@@ -342,6 +418,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       timeBlockActions.addTimeBlock(newTimeBlock);
     } catch (error) {
       console.error('Error adding time block:', error);
+      toast({
+        title: "Error",
+        description: "Failed to add time block. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -362,6 +443,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       timeBlockActions.updateTimeBlock(timeBlock);
     } catch (error) {
       console.error('Error updating time block:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update time block. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -377,6 +463,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       timeBlockActions.deleteTimeBlock(timeBlockId);
     } catch (error) {
       console.error('Error deleting time block:', error);
+      toast({
+        title: "Error",
+        description: "Failed to delete time block. Please try again.",
+        variant: "destructive",
+      });
     }
   };
 

@@ -4,6 +4,8 @@ import { sampleProjects, sampleTasks } from '../TaskMockData';
 import { useProjectActions } from '../hooks/useProjectActions';
 import { useTaskActions } from '../hooks/useTaskActions';
 import type { TaskContextType } from '../types/TaskContextTypes';
+import { v4 as uuidv4 } from 'uuid';
+import { isValidUUID } from '../TaskHelpers';
 
 const TaskContext = createContext<TaskContextType | undefined>(undefined);
 
@@ -19,7 +21,18 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setProjects(sampleProjects);
       localStorage.setItem('quire-projects', JSON.stringify(sampleProjects));
     } else {
-      setProjects(JSON.parse(storedProjects));
+      // Parse projects and ensure they have valid UUIDs
+      const parsedProjects = JSON.parse(storedProjects);
+      const validatedProjects = parsedProjects.map((project: any) => ({
+        ...project,
+        id: isValidUUID(project.id) ? project.id : uuidv4()
+      }));
+      setProjects(validatedProjects);
+      
+      // If we had to update any IDs, save the updated projects back to localStorage
+      if (JSON.stringify(parsedProjects) !== JSON.stringify(validatedProjects)) {
+        localStorage.setItem('quire-projects', JSON.stringify(validatedProjects));
+      }
     }
 
     if (!storedTasks) {
@@ -27,16 +40,65 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
       localStorage.setItem('quire-tasks', JSON.stringify(sampleTasks));
     } else {
       const parsedTasks = JSON.parse(storedTasks);
-      parsedTasks.forEach((task: any) => {
-        if (task.dueDate) task.dueDate = new Date(task.dueDate);
-        if (task.status !== undefined) {
-          delete task.status;
+      
+      // Create a mapping of old task IDs to new UUIDs if needed
+      const idMapping: Record<string, string> = {};
+      
+      // Process tasks to ensure they have valid UUIDs and fix dates
+      const processTask = (task: any): Task => {
+        // Generate a new UUID if the task ID is not valid
+        const newId = isValidUUID(task.id) ? task.id : uuidv4();
+        if (newId !== task.id) {
+          idMapping[task.id] = newId;
         }
-        if (task.timeTracked === undefined) {
-          task.timeTracked = 0;
-        }
-      });
-      setTasks(parsedTasks);
+        
+        // Process children recursively
+        const children = Array.isArray(task.children) 
+          ? task.children.map(processTask)
+          : [];
+        
+        return {
+          ...task,
+          id: newId,
+          dueDate: task.dueDate ? new Date(task.dueDate) : undefined,
+          children,
+          timeTracked: task.timeTracked ?? 0,
+          // Remove any legacy status field
+          status: undefined
+        };
+      };
+      
+      // Process all tasks
+      const validatedTasks = parsedTasks.map(processTask);
+      
+      // Update parent IDs if needed
+      const updateParentIds = (task: Task): Task => {
+        // Update children's parent IDs if they were remapped
+        const updatedChildren = task.children.map(child => {
+          const updatedChild = updateParentIds(child);
+          if (updatedChild.parentId && idMapping[updatedChild.parentId]) {
+            return {
+              ...updatedChild,
+              parentId: idMapping[updatedChild.parentId]
+            };
+          }
+          return updatedChild;
+        });
+        
+        return {
+          ...task,
+          children: updatedChildren
+        };
+      };
+      
+      const finalTasks = validatedTasks.map(updateParentIds);
+      
+      setTasks(finalTasks);
+      
+      // If we had to update any IDs, save the updated tasks back to localStorage
+      if (Object.keys(idMapping).length > 0) {
+        localStorage.setItem('quire-tasks', JSON.stringify(finalTasks));
+      }
     }
   }, []);
 
