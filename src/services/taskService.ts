@@ -7,12 +7,13 @@ import { Task, RecurrencePattern } from '@/context/TaskTypes';
  */
 export async function getTasks(): Promise<Task[]> {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    // Get the user ID directly without authentication
+    const userId = await getCurrentUserId();
     
     const { data, error } = await supabase
       .from('tasks')
-      .select('*');
+      .select('*')
+      .eq('user_id', userId);
     
     if (error) throw error;
     
@@ -92,10 +93,10 @@ export async function getTasks(): Promise<Task[]> {
 export async function createTask(task: Omit<Task, 'id' | 'children' | 'isExpanded' | 'timeTracked'>): Promise<Task> {
   try {
     const userId = await getCurrentUserId();
-    console.log(`Creating task in Supabase for user: ${userId}`);
+    console.log(`Creating task in Supabase with user ID: ${userId}`);
     
     // Generate a new UUID for the task if not provided
-    const taskId = task.id || uuidv4();
+    const taskId = task.id || generateId();
     console.log(`Using task ID: ${taskId}`);
     
     // First create the task
