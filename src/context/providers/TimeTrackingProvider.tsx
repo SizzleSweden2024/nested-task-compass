@@ -11,6 +11,7 @@ import { findTaskById, updateTaskInHierarchy, getRootTasks, isValidUUID } from '
 import type { TaskContextType, TimeTrackingContextType } from '../types/TaskContextTypes';
 import { v4 as uuidv4 } from 'uuid';
 import { getCurrentUserId } from '@/services/serviceUtils';
+import { getCurrentUserId } from '@/services/serviceUtils';
 
 const TimeTrackingContext = createContext<TimeTrackingContextType | undefined>(undefined);
 
