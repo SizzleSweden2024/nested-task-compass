@@ -149,7 +149,7 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         if (!data) {
           // Project doesn't exist, create it
-          console.log(`Creating project in Supabase: ${project.id}`);
+          console.log(`Creating project in Supabase with ID: ${project.id}`);
           const { error: insertError } = await supabase
             .from('projects')
             .insert({
@@ -210,7 +210,7 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
         
         if (!data) {
           // Task doesn't exist, create it
-          console.log(`Creating task in Supabase: ${task.id}`);
+          console.log(`Creating task in Supabase with ID: ${task.id}`);
           const { error: insertError } = await supabase
             .from('tasks')
             .insert({
@@ -228,11 +228,11 @@ export const TaskContextProvider: React.FC<{ children: React.ReactNode }> = ({ c
               time_slot: task.timeSlot,
               is_recurring: task.isRecurring || false,
               is_expanded: task.isExpanded || true,
-              user_id: userId
+              user_id: userId // This will now work since we removed the foreign key constraint
             });
           
           if (insertError) {
-            console.error(`Error creating task ${task.id}:`, insertError);
+            console.error(`Error creating task with ID ${task.id}:`, insertError);
           }
         }
       }
