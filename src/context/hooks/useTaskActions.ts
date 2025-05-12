@@ -1,17 +1,59 @@
 
 import { useState } from 'react';
 import { Task, RecurrencePattern } from '../TaskTypes';
-import { generateId, findTaskById, updateTaskInHierarchy, getRootTasks } from '../TaskHelpers';
+import { generateId, findTaskById, updateTaskInHierarchy, getRootTasks, isValidUUID } from '../TaskHelpers';
+import { v4 as uuidv4 } from 'uuid';
+import { supabase } from '@/integrations/supabase/client';
+import { getCurrentUserId } from '@/services/serviceUtils';
 
 export function useTaskActions(tasksInit: Task[], setTasks: (tasks: Task[]) => void, getCurrentTasks: () => Task[]) {
-  const addTask = (task: Omit<Task, 'id' | 'children' | 'isExpanded' | 'timeTracked'>) => {
+  const addTask = async (task: Omit<Task, 'id' | 'children' | 'isExpanded' | 'timeTracked'>) => {
+    // Always generate a new UUID for the task
+    const newId = uuidv4();
+    console.log(`Generated new UUID for task: ${newId}`);
+    
     const newTask: Task = {
       ...task,
-      id: generateId(),
+      id: newId,
       children: [],
       isExpanded: true,
       timeTracked: 0
     };
+    
+    // Try to create the task in Supabase first
+    try {
+      const userId = await getCurrentUserId();
+      console.log(`Creating task in Supabase with ID: ${newId}`);
+      
+      const { error } = await supabase
+        .from('tasks')
+        .insert({
+          id: newId,
+          title: task.title,
+          description: task.description,
+          due_date: task.dueDate?.toISOString(),
+          priority: task.priority,
+          project_id: task.projectId,
+          parent_id: task.parentId,
+          notes: task.notes,
+          estimated_time: task.estimatedTime,
+          time_tracked: 0,
+          completed: task.completed || false,
+          time_slot: task.timeSlot,
+          is_recurring: task.isRecurring || false,
+          is_expanded: true,
+          user_id: userId
+        });
+      
+      if (error) {
+        console.error('Error creating task in Supabase:', error);
+      } else {
+        console.log(`Task created successfully in Supabase with ID: ${newId}`);
+      }
+    } catch (error) {
+      console.error('Error creating task in Supabase:', error);
+    }
+    
     if (task.parentId) {
       // Add as a child task to parent
       const updatedTasks = updateTaskInHierarchy(
@@ -26,9 +68,17 @@ export function useTaskActions(tasksInit: Task[], setTasks: (tasks: Task[]) => v
     } else {
       setTasks([...getRootTasks(getCurrentTasks()), newTask]);
     }
+    
+    return newTask;
   };
 
   const updateTask = (task: Task) => {
+    // Ensure the task ID is a valid UUID
+    if (!isValidUUID(task.id)) {
+      console.error(`Task ID ${task.id} is not a valid UUID. Task will not be updated.`);
+      return;
+    }
+    
     if (task.parentId) {
       const updatedTasks = updateTaskInHierarchy(
         task.id,
@@ -39,9 +89,47 @@ export function useTaskActions(tasksInit: Task[], setTasks: (tasks: Task[]) => v
     } else {
       setTasks(getCurrentTasks().map((t) => (t.id === task.id ? task : t)));
     }
+    
+    // Try to update the task in Supabase
+    try {
+      console.log(`Updating task in Supabase with ID: ${task.id}`);
+      supabase
+        .from('tasks')
+        .update({
+          title: task.title,
+          description: task.description,
+          due_date: task.dueDate?.toISOString(),
+          priority: task.priority,
+          project_id: task.projectId,
+          parent_id: task.parentId,
+          notes: task.notes,
+          estimated_time: task.estimatedTime,
+          time_tracked: task.timeTracked,
+          completed: task.completed || false,
+          time_slot: task.timeSlot,
+          is_recurring: task.isRecurring || false,
+          is_expanded: task.isExpanded
+        })
+        .eq('id', task.id)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error updating task in Supabase:', error);
+          } else {
+            console.log(`Task updated successfully in Supabase with ID: ${task.id}`);
+          }
+        });
+    } catch (error) {
+      console.error('Error updating task in Supabase:', error);
+    }
   };
 
   const deleteTask = (taskId: string) => {
+    // Ensure the task ID is a valid UUID
+    if (!isValidUUID(taskId)) {
+      console.error(`Task ID ${taskId} is not a valid UUID. Task will not be deleted.`);
+      return;
+    }
+    
     const taskToDelete = findTaskById(taskId, getRootTasks(getCurrentTasks()));
     if (!taskToDelete) return;
 
@@ -57,6 +145,24 @@ export function useTaskActions(tasksInit: Task[], setTasks: (tasks: Task[]) => v
       setTasks(updatedTasks);
     } else {
       setTasks(getCurrentTasks().filter((t) => t.id !== taskId));
+    }
+    
+    // Try to delete the task in Supabase
+    try {
+      console.log(`Deleting task in Supabase with ID: ${taskId}`);
+      supabase
+        .from('tasks')
+        .delete()
+        .eq('id', taskId)
+        .then(({ error }) => {
+          if (error) {
+            console.error('Error deleting task in Supabase:', error);
+          } else {
+            console.log(`Task deleted successfully in Supabase with ID: ${taskId}`);
+          }
+        });
+    } catch (error) {
+      console.error('Error deleting task in Supabase:', error);
     }
   };
 
@@ -271,5 +377,10 @@ export function useTaskActions(tasksInit: Task[], setTasks: (tasks: Task[]) => v
     toggleTaskExpanded,
     updateRecurringTask,
     deleteRecurringTask
+  return { 
+    addTask, 
+    updateTask, 
+    deleteTask, 
+    toggleTaskExpanded 
   };
 }

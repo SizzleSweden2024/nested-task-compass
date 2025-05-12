@@ -92,11 +92,17 @@ export async function getTasks(): Promise<Task[]> {
 export async function createTask(task: Omit<Task, 'id' | 'children' | 'isExpanded' | 'timeTracked'>): Promise<Task> {
   try {
     const userId = await getCurrentUserId();
+    console.log(`Creating task in Supabase for user: ${userId}`);
+    
+    // Generate a new UUID for the task if not provided
+    const taskId = task.id || uuidv4();
+    console.log(`Using task ID: ${taskId}`);
     
     // First create the task
     const { data, error } = await supabase
       .from('tasks')
       .insert({
+        id: taskId,
         title: task.title,
         description: task.description,
         due_date: task.dueDate?.toISOString(),
@@ -116,6 +122,7 @@ export async function createTask(task: Omit<Task, 'id' | 'children' | 'isExpande
       .single();
     
     if (error) throw error;
+    console.log(`Task created successfully in Supabase with ID: ${data.id}`);
     
     const newTask: Task = {
       id: data.id,

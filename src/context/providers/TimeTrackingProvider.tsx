@@ -165,41 +165,89 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const startTimeTracking = async (taskId: string, notes?: string) => {
     try {
       console.log(`Starting time tracking for taskId: ${taskId}`);
+      
+      // First, check if the taskId is a valid UUID
+      if (!isValidUUID(taskId)) {
+        console.error(`Invalid taskId format: ${taskId}`);
+        toast({
+          title: "Error",
+          description: "Invalid task ID format. Please try again with a valid task.",
+          variant: "destructive",
+        });
+        return;
+      }
+      
       if (activeTimeTracking) {
         console.log(`Stopping active time tracking before starting new one`);
         await stopTimeTracking();
       }
       
-      // Find the task to ensure it exists and get its UUID
-      const task = findTaskById(taskId, getRootTasks(tasks));
-      if (!task) {
-        console.error(`Task with ID ${taskId} not found in tasks array of length ${tasks.length}`);
-        toast({
-          title: "Error",
-          description: "Task not found. Please try again.",
-          variant: "destructive",
-        });
-        return;
+      // Check if the task exists in Supabase before starting time tracking
+      const { data: taskData, error: taskError } = await supabase
+        .from('tasks')
+        .select('id, title')
+        .eq('id', taskId)
+        .single();
+      
+      if (taskError) {
+        console.error(`Error checking task existence in Supabase:`, taskError);
+        
+        // Find the task locally to get its details
+        const localTask = findTaskById(taskId, getRootTasks(tasks));
+        if (!localTask) {
+          console.error(`Task with ID ${taskId} not found locally or in Supabase`);
+          toast({
+            title: "Error",
+            description: "Task not found. Please try again with a different task.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        // Try to create the task in Supabase first
+        console.log(`Task not found in Supabase. Creating task: ${localTask.title} (${localTask.id})`);
+        const userId = await getCurrentUserId();
+        
+        const { error: insertError } = await supabase
+          .from('tasks')
+          .insert({
+            id: localTask.id,
+            title: localTask.title,
+            description: localTask.description,
+            due_date: localTask.dueDate?.toISOString(),
+            priority: localTask.priority,
+            project_id: localTask.projectId,
+            parent_id: localTask.parentId,
+            notes: localTask.notes,
+            estimated_time: localTask.estimatedTime,
+            time_tracked: localTask.timeTracked || 0,
+            completed: localTask.completed || false,
+            time_slot: localTask.timeSlot,
+            is_recurring: localTask.isRecurring || false,
+            is_expanded: localTask.isExpanded || true,
+            user_id: userId
+          });
+        
+        if (insertError) {
+          console.error(`Error creating task in Supabase:`, insertError);
+          toast({
+            title: "Error",
+            description: "Failed to create task in database. Please try again.",
+            variant: "destructive",
+          });
+          return;
+        }
+        
+        console.log(`Task created successfully in Supabase: ${localTask.id}`);
       }
       
-      // Ensure the task ID is a valid UUID
-      if (!isValidUUID(task.id)) {
-        console.error(`Task ID ${task.id} is not a valid UUID. Original taskId: ${taskId}`);
-        toast({
-          title: "Error",
-          description: "Invalid task ID format. Please refresh the page.",
-          variant: "destructive",
-        });
-        return;
-      }
+      console.log(`Starting time tracking for task: ${taskId}`);
       
-      console.log(`Starting time tracking for task: ${task.id} (${task.title})`);
-      
-      console.log(`Inserting time tracking record with task_id: ${task.id}`);
+      console.log(`Inserting time tracking record with task_id: ${taskId}`);
       const { data, error } = await supabase
         .from('time_trackings')
         .insert({
-          task_id: task.id,
+          task_id: taskId,
           start_time: new Date().toISOString(),
           duration: 0,
           notes,
