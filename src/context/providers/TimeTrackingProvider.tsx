@@ -11,7 +11,6 @@ import { findTaskById, updateTaskInHierarchy, getRootTasks, isValidUUID } from '
 import type { TaskContextType, TimeTrackingContextType } from '../types/TaskContextTypes';
 import { v4 as uuidv4 } from 'uuid';
 import { getCurrentUserId } from '@/services/serviceUtils';
-import { getCurrentUserId } from '@/services/serviceUtils';
 
 const TimeTrackingContext = createContext<TimeTrackingContextType | undefined>(undefined);
 
@@ -195,7 +194,8 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
         console.error(`Error checking task existence in Supabase:`, taskError);
         
         // Find the task locally to get its details
-        const localTask = findTaskById(taskId, getRootTasks(tasks));
+        const rootTasks = getRootTasks(tasks);
+        const localTask = rootTasks && rootTasks.length > 0 ? findTaskById(taskId, rootTasks) : null;
         if (!localTask) {
           console.error(`Task with ID ${taskId} not found locally or in Supabase`);
           toast({
@@ -320,10 +320,12 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const addTimeTracking = async (timeTracking: Omit<TimeTracking, 'id'>) => {
     try {
       // Find the task to ensure it exists and get its UUID
-      console.log(`Adding time tracking for taskId: ${timeTracking.taskId}`);
-      const task = findTaskById(timeTracking.taskId, getRootTasks(tasks));
+      const taskId = timeTracking.taskId;
+      console.log(`Adding time tracking for taskId: ${taskId}`);
+      const rootTasks = getRootTasks(tasks);
+      const task = rootTasks && rootTasks.length > 0 ? findTaskById(taskId, rootTasks) : null;
       if (!task) {
-        console.error(`Task with ID ${timeTracking.taskId} not found in tasks array of length ${tasks.length}`);
+        console.error(`Task with ID ${taskId} not found in tasks array of length ${tasks ? tasks.length : 0}`);
         toast({
           title: "Error",
           description: "Task not found. Please try again.",
@@ -439,10 +441,12 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const addTimeBlock = async (timeBlock: Omit<TimeBlock, 'id'>) => {
     try {
       // Find the task to ensure it exists and get its UUID
-      console.log(`Adding time block for taskId: ${timeBlock.taskId}`);
-      const task = findTaskById(timeBlock.taskId, getRootTasks(tasks));
+      const taskId = timeBlock.taskId;
+      console.log(`Adding time block for taskId: ${taskId}`);
+      const rootTasks = getRootTasks(tasks);
+      const task = rootTasks && rootTasks.length > 0 ? findTaskById(taskId, rootTasks) : null;
       if (!task) {
-        console.error(`Task with ID ${timeBlock.taskId} not found in tasks array of length ${tasks.length}`);
+        console.error(`Task with ID ${taskId} not found in tasks array of length ${tasks ? tasks.length : 0}`);
         toast({
           title: "Error",
           description: "Task not found. Please try again.",
