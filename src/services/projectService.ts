@@ -8,17 +8,13 @@ import { Project } from '@/context/TaskTypes';
 export async function getProjects(): Promise<Project[]> {
   try {
     const cacheKey = getCacheKey('projects');
-    const cachedProjects = projectsCache.get(cacheKey);
-    if (cachedProjects) {
-      return cachedProjects;
-    }
-
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    // Get the user ID directly without authentication
+    const userId = await getCurrentUserId();
     
     const { data, error } = await supabase
       .from('projects')
       .select('*')
+      .eq('user_id', userId)
       .order('name');
     
     if (error) throw error;
@@ -30,7 +26,6 @@ export async function getProjects(): Promise<Project[]> {
       isExpanded: project.is_expanded || false,
     }));
 
-    projectsCache.set(cacheKey, projects);
     return projects;
   } catch (error) {
     return handleSupabaseError(error, 'Failed to fetch projects');
