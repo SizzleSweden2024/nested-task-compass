@@ -9,6 +9,7 @@ import { TimeBlock } from '@/context/TaskTypes';
 export async function getTimeBlocks(): Promise<TimeBlock[]> {
   try {
     const userId = await getCurrentUserId();
+    console.log(`Fetching time blocks for user: ${userId}`);
     
     const { data, error } = await supabase
       .from('time_blocks')
@@ -18,6 +19,7 @@ export async function getTimeBlocks(): Promise<TimeBlock[]> {
     
     if (error) throw error;
     
+    console.log(`Retrieved ${data.length} time blocks`);
     return data.map(block => ({
       id: block.id,
       taskId: block.task_id,
@@ -26,6 +28,9 @@ export async function getTimeBlocks(): Promise<TimeBlock[]> {
       endTime: block.end_time
     }));
   } catch (error) {
+    console.error('Error in getTimeBlocks:', error);
+    if (error.message) console.error('Error message:', error.message);
+    if (error.details) console.error('Error details:', error.details);
     return handleSupabaseError(error, 'Failed to fetch time blocks');
   }
 }
@@ -36,6 +41,7 @@ export async function getTimeBlocks(): Promise<TimeBlock[]> {
 export async function createTimeBlock(timeBlock: Omit<TimeBlock, 'id'>): Promise<TimeBlock> {
   try {
     const userId = await getCurrentUserId();
+    console.log(`Creating time block for task: ${timeBlock.taskId}, user: ${userId}`);
     
     const { data, error } = await supabase
       .from('time_blocks')
@@ -51,6 +57,7 @@ export async function createTimeBlock(timeBlock: Omit<TimeBlock, 'id'>): Promise
     
     if (error) throw error;
     
+    console.log(`Time block created successfully with id: ${data.id}`);
     return {
       id: data.id,
       taskId: data.task_id,
@@ -59,6 +66,9 @@ export async function createTimeBlock(timeBlock: Omit<TimeBlock, 'id'>): Promise
       endTime: data.end_time
     };
   } catch (error) {
+    console.error(`Error creating time block for task ${timeBlock.taskId}:`, error);
+    if (error.message) console.error('Error message:', error.message);
+    if (error.details) console.error('Error details:', error.details);
     return handleSupabaseError(error, 'Failed to create time block');
   }
 }
@@ -68,6 +78,7 @@ export async function createTimeBlock(timeBlock: Omit<TimeBlock, 'id'>): Promise
  */
 export async function updateTimeBlock(timeBlock: TimeBlock): Promise<void> {
   try {
+    console.log(`Updating time block: ${timeBlock.id} for task: ${timeBlock.taskId}`);
     const { error } = await supabase
       .from('time_blocks')
       .update({
@@ -79,7 +90,12 @@ export async function updateTimeBlock(timeBlock: TimeBlock): Promise<void> {
       .eq('id', timeBlock.id);
     
     if (error) throw error;
+    
+    console.log(`Time block updated successfully`);
   } catch (error) {
+    console.error(`Error updating time block ${timeBlock.id}:`, error);
+    if (error.message) console.error('Error message:', error.message);
+    if (error.details) console.error('Error details:', error.details);
     handleSupabaseError(error, 'Failed to update time block');
   }
 }
@@ -89,13 +105,19 @@ export async function updateTimeBlock(timeBlock: TimeBlock): Promise<void> {
  */
 export async function deleteTimeBlock(timeBlockId: string): Promise<void> {
   try {
+    console.log(`Deleting time block: ${timeBlockId}`);
     const { error } = await supabase
       .from('time_blocks')
       .delete()
       .eq('id', timeBlockId);
     
     if (error) throw error;
+    
+    console.log(`Time block deleted successfully`);
   } catch (error) {
+    console.error(`Error deleting time block ${timeBlockId}:`, error);
+    if (error.message) console.error('Error message:', error.message);
+    if (error.details) console.error('Error details:', error.details);
     handleSupabaseError(error, 'Failed to delete time block');
   }
 }
