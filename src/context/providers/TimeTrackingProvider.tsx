@@ -10,6 +10,7 @@ import { toast } from "@/hooks/use-toast";
 import { findTaskById, updateTaskInHierarchy, getRootTasks, isValidUUID } from '../TaskHelpers';
 import type { TaskContextType, TimeTrackingContextType } from '../types/TaskContextTypes';
 import { v4 as uuidv4 } from 'uuid';
+import { getCurrentUserId } from '@/services/serviceUtils';
 
 const TimeTrackingContext = createContext<TimeTrackingContextType | undefined>(undefined);
 
@@ -187,7 +188,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
         .from('tasks')
         .select('id, title')
         .eq('id', taskId)
-        .single();
+        .maybeSingle();
       
       if (taskError) {
         console.error(`Error checking task existence in Supabase:`, taskError);

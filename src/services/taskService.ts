@@ -1,6 +1,7 @@
 import { supabase } from '@/integrations/supabase/client';
 import { handleSupabaseError, prepareDatesForSupabase, processSupabaseData, getCurrentUserId } from './serviceUtils';
 import { Task, RecurrencePattern } from '@/context/TaskTypes';
+import { v4 as uuidv4 } from 'uuid';
 
 /**
  * Fetch all tasks for the current user
@@ -96,7 +97,7 @@ export async function createTask(task: Omit<Task, 'id' | 'children' | 'isExpande
     console.log(`Creating task in Supabase with user ID: ${userId}`);
     
     // Generate a new UUID for the task if not provided
-    const taskId = task.id || generateId();
+    const taskId = task.id || uuidv4();
     console.log(`Using task ID: ${taskId}`);
     
     // First create the task

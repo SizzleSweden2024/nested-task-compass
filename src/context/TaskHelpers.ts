@@ -1,7 +1,7 @@
 import { Task } from './TaskTypes';
 import { v4 as uuidv4 } from 'uuid';
 
-export const generateId = () => {
+export const generateId = (): string => {
   const id = uuidv4();
   console.log('Generated new UUID:', id);
   return id;

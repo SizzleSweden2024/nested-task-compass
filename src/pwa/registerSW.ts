@@ -10,6 +10,15 @@ interface RegisterSWOptions {
 export function registerSW(options: RegisterSWOptions = {}): Promise<() => Promise<boolean>> {
   const { onOfflineReady, onNeedRefresh, onUpdate } = options;
   
+  // Check if running in StackBlitz or similar environment where Service Workers aren't supported
+  const isStackBlitz = window.location.hostname.includes('stackblitz') || 
+                       window.location.hostname.includes('webcontainer');
+  
+  if (isStackBlitz) {
+    console.log('Service Workers are not supported in this environment. PWA features will be limited.');
+    return Promise.resolve(() => Promise.resolve(false));
+  }
+  
   // Create a function to update the service worker
   const updateSW = async (): Promise<boolean> => {
     if ('serviceWorker' in navigator) {
@@ -26,7 +35,7 @@ export function registerSW(options: RegisterSWOptions = {}): Promise<() => Promi
   // Register the service worker
   if ('serviceWorker' in navigator) {
     // Wait for the page to load
-    window.addEventListener('load', async () => {
+    const registerServiceWorker = async () => {
       try {
         // Unregister any existing service workers first
         const registrations = await navigator.serviceWorker.getRegistrations();
@@ -77,7 +86,14 @@ export function registerSW(options: RegisterSWOptions = {}): Promise<() => Promi
       } catch (error) {
         console.error('Service worker registration failed:', error);
       }
-    });
+    };
+    
+    // Only register if not in StackBlitz
+    if (!isStackBlitz) {
+      window.addEventListener('load', registerServiceWorker);
+    } else {
+      console.log('Skipping service worker registration in StackBlitz environment');
+    }
   }
 
   return Promise.resolve(updateSW);
