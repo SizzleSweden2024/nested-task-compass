@@ -2,7 +2,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/components/ui/use-toast';
 import { Cache } from '@/utils/cache-utils';
 import { v4 as uuidv4 } from 'uuid';
-import { isValidUUID, generateId } from '@/context/TaskHelpers';
+import { isValidUUID } from '@/context/TaskHelpers';
 
 /**
  * Utility function to handle Supabase errors
@@ -66,10 +66,10 @@ export const processSupabaseData = <T extends Record<string, any>>(data: T): T =
 };
 
 /**
- * Get the current user ID (a valid UUID)
+ * Get the current user ID (a valid UUID) - uses profiles table instead of users
  */
 export const getCurrentUserId = async (): Promise<string> => {
-  // Get the user ID from localStorage or generate a new one - no validation against profiles table
+  // Get the user ID from localStorage or generate a new one
   const USER_ID_KEY = 'khonja_user_id';
   let userId = localStorage.getItem(USER_ID_KEY);
   
@@ -78,8 +78,22 @@ export const getCurrentUserId = async (): Promise<string> => {
     userId = uuidv4();
     localStorage.setItem(USER_ID_KEY, userId);
     console.log('Generated new user ID:', userId);
-    
-    // No need to create a profile entry since we've removed the foreign key constraint
+
+    // Create a profile entry for the new user
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          name: 'Anonymous User'
+        });
+      
+      if (error) {
+        console.error('Error creating profile:', error);
+      }
+    } catch (error) {
+      console.error('Error creating profile:', error);
+    }
   }
   
   return userId;

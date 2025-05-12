@@ -3,8 +3,6 @@ import { ReactNode, TimeTracking, TimeBlock } from '../TaskTypes';
 import { useTimeTrackingActions } from '../hooks/useTimeTrackingActions';
 import { useTimeBlockActions } from '../hooks/useTimeBlockActions';
 import { supabase } from '@/integrations/supabase/client';
-import * as timeTrackingService from '@/services/timeTrackingService';
-import * as timeBlockService from '@/services/timeBlockService';
 import { withTaskContext } from '../hocs/withTaskContext';
 import { toast } from "@/hooks/use-toast";
 import { findTaskById, updateTaskInHierarchy, getRootTasks, isValidUUID } from '../TaskHelpers';
@@ -26,18 +24,6 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const { tasks, updateTask } = taskContext;
   
   // Get or generate a persistent UUID for the user
-  const getUserId = () => {
-    const USER_ID_KEY = 'khonja_user_id';
-    let userId = localStorage.getItem(USER_ID_KEY);
-    if (!userId || !isValidUUID(userId)) {
-      userId = uuidv4();
-      localStorage.setItem(USER_ID_KEY, userId);
-    }
-    return userId;
-  };
-  
-  const userId = getUserId();
-  
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
   const [timeTrackings, setTimeTrackings] = useState<TimeTracking[]>([]);
   const [activeTimeTracking, setActiveTimeTracking] = useState<TimeTracking | null>(null);
@@ -86,6 +72,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const loadTimeTrackings = async () => {
     try {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('time_trackings')
         .select('*')
@@ -117,6 +104,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const loadTimeBlocks = async () => {
     try {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('time_blocks')
         .select('*')
@@ -165,6 +153,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const startTimeTracking = async (taskId: string, notes?: string) => {
     try {
+      const userId = await getCurrentUserId();
       console.log(`Starting time tracking for taskId: ${taskId}`);
       
       // First, check if the taskId is a valid UUID
@@ -319,6 +308,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const addTimeTracking = async (timeTracking: Omit<TimeTracking, 'id'>) => {
     try {
+      const userId = await getCurrentUserId();
       // Find the task to ensure it exists and get its UUID
       const taskId = timeTracking.taskId;
       console.log(`Adding time tracking for taskId: ${taskId}`);
@@ -440,6 +430,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const addTimeBlock = async (timeBlock: Omit<TimeBlock, 'id'>) => {
     try {
+      const userId = await getCurrentUserId();
       // Find the task to ensure it exists and get its UUID
       const taskId = timeBlock.taskId;
       console.log(`Adding time block for taskId: ${taskId}`);

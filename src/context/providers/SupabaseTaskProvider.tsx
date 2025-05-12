@@ -10,7 +10,7 @@ import * as taskService from '@/services/taskService';
 import * as timeTrackingService from '@/services/timeTrackingService';
 import * as timeBlockService from '@/services/timeBlockService';
 import { toast } from '@/components/ui/use-toast';
-import { useOnlineStatus } from '@/hooks/use-online-status';
+import { useOnlineStatus } from '@/hooks/use-online-status'; 
 
 interface SupabaseTaskContextProviderType {
   projects: Project[];
@@ -47,21 +47,7 @@ interface SupabaseTaskContextProviderType {
 
 const SupabaseTaskContext = createContext<SupabaseTaskContextProviderType | undefined>(undefined);
 
-const USER_ID_KEY = 'khonja_user_id';
-
 export const SupabaseTaskProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  // Get or generate a persistent UUID for the user
-  const getUserId = () => {
-    let userId = localStorage.getItem(USER_ID_KEY);
-    if (!userId) {
-      userId = crypto.randomUUID();
-      localStorage.setItem(USER_ID_KEY, userId);
-    }
-    return userId;
-  };
-  
-  const userId = getUserId();
-  
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [timeBlocks, setTimeBlocks] = useState<TimeBlock[]>([]);
@@ -197,6 +183,7 @@ export const SupabaseTaskProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const loadProjects = async () => {
     try {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('projects')
         .select('*')
@@ -219,6 +206,7 @@ export const SupabaseTaskProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const loadTasks = async () => {
     try {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('tasks')
         .select('*')
@@ -252,6 +240,7 @@ export const SupabaseTaskProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const loadTimeTrackings = async () => {
     try {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('time_trackings')
         .select('*')
@@ -283,6 +272,7 @@ export const SupabaseTaskProvider: React.FC<{ children: ReactNode }> = ({ childr
 
   const loadTimeBlocks = async () => {
     try {
+      const userId = await getCurrentUserId();
       const { data, error } = await supabase
         .from('time_blocks')
         .select('*')

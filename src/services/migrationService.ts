@@ -18,14 +18,27 @@ export async function migrateDataToSupabase(
 ): Promise<boolean> {
   try {
     // Check if user is authenticated
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) {
-      toast({
-        title: "Authentication required",
-        description: "Please log in before migrating your data.",
-        variant: "destructive",
-      });
-      return false;
+    const userId = await getCurrentUserId();
+    
+    // Check if the user has a profile
+    const { data: profile, error: profileError } = await supabase
+      .from('profiles')
+      .select('id')
+      .eq('id', userId)
+      .single();
+    
+    if (profileError) {
+      // Create a profile if it doesn't exist
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          name: 'Anonymous User'
+        });
+      
+      if (error) {
+        console.error('Error creating profile:', error);
+      }
     }
 
     // Update progress
@@ -47,7 +60,7 @@ export async function migrateDataToSupabase(
     progressCallback?.("Processing data...", 10);
 
     // Fix dates in tasks
-    tasks.forEach(task => {
+    tasks.forEach((task: Task) => {
       if (task.dueDate) task.dueDate = new Date(task.dueDate);
       if (task.recurrencePattern?.endDate) {
         task.recurrencePattern.endDate = new Date(task.recurrencePattern.endDate);
@@ -60,13 +73,13 @@ export async function migrateDataToSupabase(
     });
 
     // Fix dates in time trackings
-    timeTrackings.forEach(tracking => {
+    timeTrackings.forEach((tracking: TimeTracking) => {
       tracking.startTime = new Date(tracking.startTime);
       if (tracking.endTime) tracking.endTime = new Date(tracking.endTime);
     });
 
     // Fix dates in time blocks
-    timeBlocks.forEach(block => {
+    timeBlocks.forEach((block: TimeBlock) => {
       block.date = new Date(block.date);
     });
 
