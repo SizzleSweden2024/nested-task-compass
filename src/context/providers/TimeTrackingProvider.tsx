@@ -164,14 +164,16 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const startTimeTracking = async (taskId: string, notes?: string) => {
     try {
+      console.log(`Starting time tracking for taskId: ${taskId}`);
       if (activeTimeTracking) {
+        console.log(`Stopping active time tracking before starting new one`);
         await stopTimeTracking();
       }
       
       // Find the task to ensure it exists and get its UUID
       const task = findTaskById(taskId, getRootTasks(tasks));
       if (!task) {
-        console.error(`Task with ID ${taskId} not found`);
+        console.error(`Task with ID ${taskId} not found in tasks array of length ${tasks.length}`);
         toast({
           title: "Error",
           description: "Task not found. Please try again.",
@@ -182,7 +184,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       // Ensure the task ID is a valid UUID
       if (!isValidUUID(task.id)) {
-        console.error(`Task ID ${task.id} is not a valid UUID`);
+        console.error(`Task ID ${task.id} is not a valid UUID. Original taskId: ${taskId}`);
         toast({
           title: "Error",
           description: "Invalid task ID format. Please refresh the page.",
@@ -193,6 +195,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       console.log(`Starting time tracking for task: ${task.id} (${task.title})`);
       
+      console.log(`Inserting time tracking record with task_id: ${task.id}`);
       const { data, error } = await supabase
         .from('time_trackings')
         .insert({
@@ -207,6 +210,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       if (error) {
         console.error('Supabase error:', error);
+        console.error('Error details:', JSON.stringify(error));
         throw error;
       }
       
@@ -232,9 +236,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const stopTimeTracking = async () => {
     try {
       if (activeTimeTracking) {
+        console.log(`Stopping time tracking for taskId: ${activeTimeTracking.taskId}`);
         const endTime = new Date();
         const duration = Math.floor((endTime.getTime() - activeTimeTracking.startTime.getTime()) / 60000);
         
+        console.log(`Updating time tracking record with id: ${activeTimeTracking.id}`);
         const { error } = await supabase
           .from('time_trackings')
           .update({
@@ -248,6 +254,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
         // Update task's total tracked time
         const task = findTaskById(activeTimeTracking.taskId, getRootTasks(tasks));
         if (task) {
+          console.log(`Updating task time tracked. Task ID: ${task.id}, Current tracked: ${task.timeTracked}, Adding: ${duration}`);
           updateTaskTimeTracked(activeTimeTracking.taskId, duration);
         }
         
@@ -263,9 +270,10 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const addTimeTracking = async (timeTracking: Omit<TimeTracking, 'id'>) => {
     try {
       // Find the task to ensure it exists and get its UUID
+      console.log(`Adding time tracking for taskId: ${timeTracking.taskId}`);
       const task = findTaskById(timeTracking.taskId, getRootTasks(tasks));
       if (!task) {
-        console.error(`Task with ID ${timeTracking.taskId} not found`);
+        console.error(`Task with ID ${timeTracking.taskId} not found in tasks array of length ${tasks.length}`);
         toast({
           title: "Error",
           description: "Task not found. Please try again.",
@@ -276,7 +284,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       // Ensure the task ID is a valid UUID
       if (!isValidUUID(task.id)) {
-        console.error(`Task ID ${task.id} is not a valid UUID`);
+        console.error(`Task ID ${task.id} is not a valid UUID. Original taskId: ${timeTracking.taskId}`);
         toast({
           title: "Error",
           description: "Invalid task ID format. Please refresh the page.",
@@ -285,6 +293,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
         return;
       }
       
+      console.log(`Inserting time tracking with task_id: ${task.id}`);
       const { data, error } = await supabase
         .from('time_trackings')
         .insert({
@@ -313,8 +322,11 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       // Update task's total tracked time
       updateTaskTimeTracked(task.id, timeTracking.duration);
+      console.log(`Time tracking added successfully with id: ${data.id}`);
     } catch (error) {
       console.error('Error adding time tracking:', error);
+      if (error.message) console.error('Error message:', error.message);
+      if (error.details) console.error('Error details:', error.details);
       toast({
         title: "Error",
         description: "Failed to add time tracking. Please try again.",
@@ -325,6 +337,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const updateTimeTracking = async (timeTracking: TimeTracking) => {
     try {
+      console.log(`Updating time tracking with id: ${timeTracking.id}`);
       const { error } = await supabase
         .from('time_trackings')
         .update({
@@ -339,7 +352,9 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       timeTrackingActions.updateTimeTracking(timeTracking);
     } catch (error) {
-      console.error('Error updating time tracking:', error);
+      console.error(`Error updating time tracking ${timeTracking.id}:`, error);
+      if (error.message) console.error('Error message:', error.message);
+      if (error.details) console.error('Error details:', error.details);
       toast({
         title: "Error",
         description: "Failed to update time tracking. Please try again.",
@@ -350,6 +365,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const deleteTimeTracking = async (timeTrackingId: string) => {
     try {
+      console.log(`Deleting time tracking with id: ${timeTrackingId}`);
       const { error } = await supabase
         .from('time_trackings')
         .delete()
@@ -359,7 +375,9 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       timeTrackingActions.deleteTimeTracking(timeTrackingId);
     } catch (error) {
-      console.error('Error deleting time tracking:', error);
+      console.error(`Error deleting time tracking ${timeTrackingId}:`, error);
+      if (error.message) console.error('Error message:', error.message);
+      if (error.details) console.error('Error details:', error.details);
       toast({
         title: "Error",
         description: "Failed to delete time tracking. Please try again.",
@@ -371,9 +389,10 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
   const addTimeBlock = async (timeBlock: Omit<TimeBlock, 'id'>) => {
     try {
       // Find the task to ensure it exists and get its UUID
+      console.log(`Adding time block for taskId: ${timeBlock.taskId}`);
       const task = findTaskById(timeBlock.taskId, getRootTasks(tasks));
       if (!task) {
-        console.error(`Task with ID ${timeBlock.taskId} not found`);
+        console.error(`Task with ID ${timeBlock.taskId} not found in tasks array of length ${tasks.length}`);
         toast({
           title: "Error",
           description: "Task not found. Please try again.",
@@ -384,7 +403,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       // Ensure the task ID is a valid UUID
       if (!isValidUUID(task.id)) {
-        console.error(`Task ID ${task.id} is not a valid UUID`);
+        console.error(`Task ID ${task.id} is not a valid UUID. Original taskId: ${timeBlock.taskId}`);
         toast({
           title: "Error",
           description: "Invalid task ID format. Please refresh the page.",
@@ -393,6 +412,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
         return;
       }
       
+      console.log(`Inserting time block with task_id: ${task.id}`);
       const { data, error } = await supabase
         .from('time_blocks')
         .insert({
@@ -417,7 +437,9 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       timeBlockActions.addTimeBlock(newTimeBlock);
     } catch (error) {
-      console.error('Error adding time block:', error);
+      console.error(`Error adding time block:`, error);
+      if (error.message) console.error('Error message:', error.message);
+      if (error.details) console.error('Error details:', error.details);
       toast({
         title: "Error",
         description: "Failed to add time block. Please try again.",
@@ -428,6 +450,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const updateTimeBlock = async (timeBlock: TimeBlock) => {
     try {
+      console.log(`Updating time block with id: ${timeBlock.id}`);
       const { error } = await supabase
         .from('time_blocks')
         .update({
@@ -442,7 +465,9 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       timeBlockActions.updateTimeBlock(timeBlock);
     } catch (error) {
-      console.error('Error updating time block:', error);
+      console.error(`Error updating time block ${timeBlock.id}:`, error);
+      if (error.message) console.error('Error message:', error.message);
+      if (error.details) console.error('Error details:', error.details);
       toast({
         title: "Error",
         description: "Failed to update time block. Please try again.",
@@ -453,6 +478,7 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
 
   const deleteTimeBlock = async (timeBlockId: string) => {
     try {
+      console.log(`Deleting time block with id: ${timeBlockId}`);
       const { error } = await supabase
         .from('time_blocks')
         .delete()
@@ -462,7 +488,9 @@ const TimeTrackingProviderBase: React.FC<TimeTrackingProviderProps> = ({
       
       timeBlockActions.deleteTimeBlock(timeBlockId);
     } catch (error) {
-      console.error('Error deleting time block:', error);
+      console.error(`Error deleting time block ${timeBlockId}:`, error);
+      if (error.message) console.error('Error message:', error.message);
+      if (error.details) console.error('Error details:', error.details);
       toast({
         title: "Error",
         description: "Failed to delete time block. Please try again.",
