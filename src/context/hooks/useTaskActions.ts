@@ -377,6 +377,7 @@ export function useTaskActions(tasksInit: Task[], setTasks: (tasks: Task[]) => v
     toggleTaskExpanded,
     updateRecurringTask,
     deleteRecurringTask
+  }
   return { 
     addTask, 
     updateTask, 
